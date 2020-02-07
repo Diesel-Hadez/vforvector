@@ -1,0 +1,6 @@
+[submodule "external/nanogui"]
+	path = external/nanogui
+	url = https://github.com/mitsuba-renderer/nanogui.git
+[submodule "external/turbobadger"]
+	path = external/turbobadger
+	url = https://github.com/fruxo/turbobadger.git
