@@ -29,12 +29,28 @@ static unsigned int VAO;
 static unsigned int textureID;
 static bool viewHigh = false;
 
+static float angle_of_badge = 90.f;
+static float le_size = 1.0f;
 void HighscoreScene::Update()
 {
 	currentFrame 	= glfwGetTime();
 	m_DeltaTime	= currentFrame - lastFrame;
 	lastFrame	= currentFrame;
+    
+	if (glfwGetKey(Game::m_Window, GLFW_KEY_O) == GLFW_PRESS){
+        le_size += 1.f * m_DeltaTime;
+	}
+	if (glfwGetKey(Game::m_Window, GLFW_KEY_L) == GLFW_PRESS){
+        le_size -= 1.f * m_DeltaTime;
+	}
 
+	//30 is the speed
+	if (glfwGetKey(Game::m_Window, GLFW_KEY_I) == GLFW_PRESS){
+        angle_of_badge += 1.0f * 30.f * m_DeltaTime;
+	}
+	if (glfwGetKey(Game::m_Window, GLFW_KEY_K) == GLFW_PRESS){
+        angle_of_badge -= 1.f * 30.f * m_DeltaTime;
+	}
 	if (glfwGetKey(Game::m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         escPressed = true;
 	}
@@ -79,6 +95,7 @@ void HighscoreScene::Update()
   
 }
 
+
 void HighscoreScene::Render()
 {
     glClearColor(0.f, 0.f, 0.f, 0.f);
@@ -99,14 +116,11 @@ void HighscoreScene::Render()
         quitColor = selectedColor;
     }
     glm::mat4 model(1.0f);
-    //model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+    model = glm::scale(model, glm::vec3(le_size, le_size, 0.1f));
     model = glm::translate(model, glm::vec3(0.00f,0.00f,-80.00f));  
-    model = glm::rotate(model, static_cast<float>(glm::radians(90.f)), glm::vec3(1.0f,1.0f,1.0f));
+    model = glm::rotate(model, static_cast<float>(glm::radians(angle_of_badge)), glm::vec3(1.0f,1.0f,1.0f));
    
-  //  model = glm::rotate(model, static_cast<float>(glm::radians(180.f)), glm::vec3(1.0f,0.0f,0.0f));
-   // model = glm::rotate(model, static_cast<float>(glm::radians(90.f)), glm::vec3(1.0f,0.0f,0.0f));
-    //model = glm::rotate(model, static_cast<float>(std::sin(glfwGetTime())), glm::vec3(0.0f,1.0f,0.0f));
-	glm::mat4 view(1.0f);
+    glm::mat4 view(1.0f);
     m_Shader.Use();
     m_Shader.Set<glm::mat4>("projection", glm::perspective(static_cast<float>(glm::radians(45.0f)), static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT), 0.1f, 200.0f));
     m_Shader.Set<glm::mat4>("model", model);
@@ -117,7 +131,11 @@ void HighscoreScene::Render()
     glBindTexture(GL_TEXTURE_2D, textureID);
     m_Shader.Use();
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, vertices.size()/5); 
+    //Divide this by 5 for some reason...
+    //Just realised why. 5 values in each vertex. X, Y, Z, TX, TY
+    //Also, apparently on my laptop if you pass extra data by accident, it renders fine
+    //But in Emscripten it just doesn't render anything at all
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 5); 
     if (viewHigh){
                 m_SomeText->RenderText("Highscore",0.0f,static_cast<float>(WINDOW_HEIGHT)-30.0f, nonSelectedColor , 0.7f);        
         //TO-DO, pls. I need sleep
@@ -157,6 +175,7 @@ HighscoreScene::HighscoreScene() : m_DeltaTime(0.0f), m_Shader("../assets/LogoSh
     // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
     glBindVertexArray(VAO);
 
+    //Probably a cleaner way to do this
     std::ifstream is("../assets/3dmodel/logo.obj");
     std::vector<Coordinate> access_vertices;
     std::vector<Coordinate> access_texture;
@@ -197,7 +216,7 @@ HighscoreScene::HighscoreScene() : m_DeltaTime(0.0f), m_Shader("../assets/LogoSh
                            std::atof(cur[2].c_str()),
                            std::atof(cur[3].c_str())));
         if (cur[0][0] == 'v' && 
-            (cur[0].length() == 2))
+            (cur[0][1] == 't'))
             access_texture.emplace_back(
                 Coordinate(std::atof(cur[1].c_str()),
                            std::atof(cur[2].c_str()),
@@ -205,30 +224,41 @@ HighscoreScene::HighscoreScene() : m_DeltaTime(0.0f), m_Shader("../assets/LogoSh
     }
     
     for (std::size_t i=0;i<access_face.size();i++) {
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V1)-1].X);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V1)-1].Y);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V1)-1].Z);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T1)-1].X*-1);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T1)-1].Y);
+        auto vert1 = access_vertices[static_cast<int>(access_face[i].V1)-1];
+        auto text1 = access_texture[static_cast<int>(access_face[i].T1)-1];
+        auto vert2 = access_vertices[static_cast<int>(access_face[i].V2)-1];
+        auto text2 = access_texture[static_cast<int>(access_face[i].T2)-1];
+        auto vert3 = access_vertices[static_cast<int>(access_face[i].V3)-1];
+        auto text3 = access_texture[static_cast<int>(access_face[i].T3)-1];
+        
+     vertices.emplace_back(vert1.X);   
+     vertices.emplace_back(vert1.Y);   
+     vertices.emplace_back(vert1.Z);  
+     vertices.emplace_back(text1.X);  
+     vertices.emplace_back(text1.Y);
      
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V2)-1].X);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V2)-1].Y);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V2)-1].Z);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T2)-1].X*-1);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T2)-1].Y);
+     vertices.emplace_back(vert2.X);   
+     vertices.emplace_back(vert2.Y);   
+     vertices.emplace_back(vert2.Z);  
+     vertices.emplace_back(text2.X);  
+     vertices.emplace_back(text2.Y);
      
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V3)-1].X);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V3)-1].Y);   
-     vertices.emplace_back(access_vertices[static_cast<int>(access_face[i].V3)-1].Z);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T3)-1].X*-1);  
-     vertices.emplace_back(access_texture[static_cast<int>(access_face[i].T3)-1].Y);
+     vertices.emplace_back(vert3.X);   
+     vertices.emplace_back(vert3.Y);   
+     vertices.emplace_back(vert3.Z);  
+     vertices.emplace_back(text3.X);  
+     vertices.emplace_back(text3.Y);
     }
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size(), vertices.data(), GL_STATIC_DRAW);
+    //sizeof doesn't work correctly in emscripten for some reason. Probably a good reason though. I just don't know it.
+    //also sizeof(type) is fine
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -244,7 +274,7 @@ HighscoreScene::HighscoreScene() : m_DeltaTime(0.0f), m_Shader("../assets/LogoSh
     unsigned char *data = stbi_load("../assets/3dmodel/Yes.png", &width, &height, &nrChannels, 0);
     if (data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else

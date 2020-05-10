@@ -1,3 +1,7 @@
+# For Emscripten use the following commands
+# `cmake -DCMAKE_TOOLCHAIN_FILE=/path_to_emscripten/emscripten/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake  -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -S . -B relbuild`
+# `cmake --build relbuild`
+
 cmake_minimum_required(VERSION 3.1)
 include(FetchContent)
 
@@ -46,26 +50,35 @@ add_executable(visforvector
 # But anyway, apparently I'm not using OpenGL directly so I don't need to link it.
 
 # In future, probably a good idea to use FetchContent_Declare for GLFW and Freetype
-find_package(glfw3 3.3 REQUIRED)
+
 find_package(OpenGL REQUIRED)
-find_package(Freetype REQUIRED)
-
-
-
-if (NOT glfw3_FOUND)
-	message("GLFW NOT FOUND")
-endif()
 
 if (NOT OpenGL_GLX_FOUND)
 	message("GLX NOT FOUND")
 endif()
 
-if (NOT Freetype_FOUND)
-    message("FREETYPE NOT FOUND")
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    find_package(glfw3 3.3 REQUIRED)
+    find_package(Freetype REQUIRED)
+
+    if (NOT glfw3_FOUND)
+        message("GLFW NOT FOUND")
+    endif()
+
+    if (NOT Freetype_FOUND)
+        message("FREETYPE NOT FOUND")
+    endif()
+else()
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
 endif()
 
 set(GLAD_INCLUDE "${CMAKE_SOURCE_DIR}/external/glad/include")
 set(GLM_INCLUDE "${CMAKE_SOURCE_DIR}/external/glm/")
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+	target_include_directories(visforvector PRIVATE "${EMSCRIPTEN_ROOT_PATH}/system/include"
+		"/usr/include/freetype2")
+endif()
 
 target_include_directories(glad PUBLIC
 	"${GLAD_INCLUDE}"
@@ -86,9 +99,15 @@ if(MAX_WARNINGS)
     endif()
 endif()
 
-target_link_libraries(visforvector PRIVATE 
-    glad
-    glfw
-    ${OPENGL_gl_LIBRARY}
-    ${FREETYPE_LIBRARIES}
-    ${CMAKE_DL_LIBS})
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+set (EMSCRIPTEN_LINK_FLAGS "-o site.html -s DEMANGLE_SUPPORT=1 -s STACK_OVERFLOW_CHECK=1 -s USE_WEBGL2=1 --bind -O1 -g4 -std=c++17 -s FULL_ES3=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ASSERTIONS=2 -s USE_FREETYPE=1 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=1 -s USE_GLFW=3 --preload-file ../assets --source-map-base http://localhost:8080/relbuild/")
+	target_link_libraries(visforvector PRIVATE glad)
+	set_target_properties(visforvector PROPERTIES LINK_FLAGS "${EMSCRIPTEN_LINK_FLAGS}")
+else ()
+    target_link_libraries(visforvector PRIVATE 
+        glad
+        glfw
+        ${OPENGL_gl_LIBRARY}
+        ${FREETYPE_LIBRARIES}
+        ${CMAKE_DL_LIBS})
+endif()

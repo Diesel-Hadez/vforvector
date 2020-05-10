@@ -31,6 +31,7 @@ namespace {
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 		if (!success) {
 			glGetShaderInfoLog(shader, 512, NULL, infoLog);
+			std::cout << "Shader error: " << std::string(infoLog) << std::endl;
 			throw std::runtime_error(std::string("Shader error: " + std::string(infoLog)));
 		}
 		return shader;

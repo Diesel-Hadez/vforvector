@@ -77,7 +77,7 @@ TextRenderer::TextRenderer()
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D,
 			0,
-			GL_RED,
+			GL_R8,
 			face->glyph->bitmap.width,
 			face->glyph->bitmap.rows,
 			0,GL_RED,
@@ -93,7 +93,7 @@ TextRenderer::TextRenderer()
 			texture,
 			glm::ivec2(face->glyph->bitmap.width,face->glyph->bitmap.rows),
 			glm::ivec2(face->glyph->bitmap_left,face->glyph->bitmap_top),
-			face->glyph->advance.x
+			static_cast<GLuint>(face->glyph->advance.x)
 		};
 		m_Characters.insert(std::pair<GLchar, Character>(c, character));
 	}
